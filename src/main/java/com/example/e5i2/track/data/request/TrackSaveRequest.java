@@ -9,6 +9,10 @@ import jakarta.validation.constraints.NotNull;
 public record TrackSaveRequest(
 	@NotNull Double distance,
 	@NotNull LocalTime trackTime,
-	@NotNull TrackType trackType
+	@NotNull TrackType trackType,
+	@NotNull Integer steps,
+	@NotNull Integer calories,
+	@NotNull Integer heartRate,
+	@NotNull LocalTime pace
 ) {
 }
