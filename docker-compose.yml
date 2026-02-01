@@ -29,7 +29,6 @@ services:
     env_file:
       - .env
     environment:
-      # Postgres 공식 이미지 변수 매핑
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}

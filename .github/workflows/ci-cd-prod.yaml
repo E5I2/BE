@@ -17,11 +17,9 @@ jobs:
           distribution: 'temurin'
           cache: gradle
 
-      # 1. 빌드
       - name: Build with Gradle
         run: ./gradlew build -x test
 
-      # 2. AWS 인증
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -29,7 +27,6 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      # 3. ECR 로그인 및 이미지 푸시
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
@@ -42,7 +39,6 @@ jobs:
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:latest .
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
 
-      # 4. [중요] 보안 그룹 열기 (Runner IP 허용)
       - name: Get Runner IP
         id: ip
         run: echo "ipv4=$(curl -s https://ifconfig.me)" >> $GITHUB_OUTPUT
@@ -54,7 +50,6 @@ jobs:
             --protocol tcp --port 22 \
             --cidr ${{ steps.ip.outputs.ipv4 }}/32
 
-      # 5. 이제 안전하게 파일 전송 (SCP)
       - name: Copy docker-compose.yml to EC2
         uses: appleboy/scp-action@master
         with:
@@ -64,7 +59,6 @@ jobs:
           source: "docker-compose.yml"
           target: "/home/ec2-user/"
 
-      # 6. SSH 접속 후 배포 명령어 실행
       - name: SSH Deploy
         uses: appleboy/ssh-action@master
         env:
@@ -75,22 +69,16 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           envs: ECR_REGISTRY
           script: |
-            # ECR 로그인
             aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin $ECR_REGISTRY
             
-            # 작업 디렉토리 이동
             cd /home/ec2-user
             
-            # 기존 컨테이너 종료 및 최신 이미지 풀
             docker-compose pull
             
-            # 새 컨테이너 실행
             docker-compose up -d
             
-            # 안쓰는 이미지 정리
             docker image prune -f
 
-      # 7. [중요] 배포 후 보안 그룹 닫기 (실패해도 실행되도록 always() 사용)
       - name: Revoke Runner IP from Security Group
         if: always()
         run: |
